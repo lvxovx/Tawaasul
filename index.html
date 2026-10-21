@@ -1,0 +1,845 @@
+```html
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Chat - تطبيق التواصل الفوري</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Cairo -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .pulse-ring {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen overflow-hidden flex flex-col">
+
+    <!-- شاشة إعداد الملف الشخصي وبدء الدخول -->
+    <div id="auth-screen" class="fixed inset-0 bg-slate-950/95 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl relative overflow-hidden">
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
+            <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl"></div>
+            
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-gradient-to-tr from-emerald-500 to-teal-400 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-4">
+                    <i class="fa-solid fa-comments text-3xl text-slate-950"></i>
+                </div>
+                <h1 class="text-2xl font-bold tracking-tight">مرحباً بك في Nexus</h1>
+                <p class="text-slate-400 text-sm mt-1">تواصل فوري آمن وخاص مع أصدقائك</p>
+            </div>
+
+            <form id="profile-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1.5">اسم المستخدم أو اللقب</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-500"><i class="fa-solid fa-user"></i></span>
+                        <input type="text" id="username-input" required placeholder="أدخل اسمك المستعار..." class="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl py-3 pr-10 pl-4 text-sm focus:outline-none focus:border-emerald-500 transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1.5">اختر الرمز التعريفي (Avatar)</label>
+                    <div class="grid grid-cols-5 gap-3 pt-1" id="avatar-selector">
+                        <div class="avatar-option cursor-pointer rounded-xl p-2 bg-slate-800 border-2 border-emerald-500 text-center text-xl transition" data-avatar="🦊">🦊</div>
+                        <div class="avatar-option cursor-pointer rounded-xl p-2 bg-slate-800 border-2 border-transparent text-center text-xl transition" data-avatar="🐼">🐼</div>
+                        <div class="avatar-option cursor-pointer rounded-xl p-2 bg-slate-800 border-2 border-transparent text-center text-xl transition" data-avatar="🦁">🦁</div>
+                        <div class="avatar-option cursor-pointer rounded-xl p-2 bg-slate-800 border-2 border-transparent text-center text-xl transition" data-avatar="🚀">🚀</div>
+                        <div class="avatar-option cursor-pointer rounded-xl p-2 bg-slate-800 border-2 border-transparent text-center text-xl transition" data-avatar="⚡">⚡</div>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-slate-950 font-semibold py-3 rounded-xl shadow-lg shadow-emerald-500/25 transition duration-200 mt-2">
+                    بدء الدردشة الآن
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- نافذة الإشعارات المخصصة (بدون alert) -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl">
+            <div id="modal-icon" class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4 text-xl">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h3 id="modal-title" class="text-lg font-bold mb-2">تنبيه</h3>
+            <p id="modal-message" class="text-slate-400 text-sm mb-6">الرسالة هنا...</p>
+            <button onclick="closeModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-2.5 rounded-xl transition">حسناً</button>
+        </div>
+    </div>
+
+    <!-- واجهة المكالمة (صوت / فيديو) -->
+    <div id="call-screen" class="fixed inset-0 bg-slate-950 z-50 hidden flex flex-col items-center justify-between p-6">
+        <div class="flex items-center justify-between w-full max-w-4xl pt-4">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div id="call-avatar" class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center text-2xl">🦊</div>
+                <div>
+                    <h3 id="call-username" class="font-bold text-lg">اسم المستخدم</h3>
+                    <p id="call-status" class="text-xs text-emerald-400">جاري الاتصال...</p>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 px-4 py-2 rounded-full border border-slate-800 text-sm font-mono" id="call-timer">00:00</div>
+        </div>
+
+        <!-- منطقة الفيديو أو الصورة الرمزية المكبرة -->
+        <div class="flex-1 w-full max-w-4xl my-4 bg-slate-900/50 rounded-3xl border border-slate-800/80 flex items-center justify-center relative overflow-hidden shadow-2xl">
+            <div id="video-placeholder" class="text-center">
+                <div class="w-32 h-32 bg-slate-800 rounded-full flex items-center justify-center text-6xl mx-auto mb-4 pulse-ring" id="call-screen-avatar">🦊</div>
+                <p class="text-slate-400 text-sm">مكالمة نشطة</p>
+            </div>
+            <video id="remote-video" autoplay playsinline class="absolute inset-0 w-full h-full object-cover hidden"></video>
+            <video id="local-video" autoplay playsinline muted class="absolute bottom-4 left-4 w-32 h-44 object-cover rounded-2xl border-2 border-slate-700 hidden shadow-lg"></video>
+        </div>
+
+        <!-- أزرار التحكم بالمكالمة -->
+        <div class="flex items-center space-x-6 space-x-reverse pb-4">
+            <button onclick="toggleAudio()" id="btn-mute" class="w-14 h-14 bg-slate-800 hover:bg-slate-700 rounded-full flex items-center justify-center text-xl transition"><i class="fa-solid fa-microphone"></i></button>
+            <button onclick="endCall()" class="w-16 h-16 bg-rose-600 hover:bg-rose-700 rounded-full flex items-center justify-center text-2xl shadow-lg shadow-rose-600/30 transition"><i class="fa-solid fa-phone-slash"></i></button>
+            <button onclick="toggleVideo()" id="btn-video" class="w-14 h-14 bg-slate-800 hover:bg-slate-700 rounded-full flex items-center justify-center text-xl transition"><i class="fa-solid fa-video"></i></button>
+        </div>
+    </div>
+
+    <!-- التطبيق الرئيسي -->
+    <div class="flex-1 flex overflow-hidden max-w-7xl w-full mx-auto shadow-2xl border-x border-slate-900">
+        
+        <!-- القائمة الجانبية (الشاتات وجهات الاتصال) -->
+        <aside id="sidebar" class="w-full md:w-80 lg:w-96 bg-slate-900 border-l border-slate-800 flex flex-col z-20 transition-all duration-300">
+            
+            <!-- رأس القائمة الجانبية -->
+            <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-3 space-x-reverse">
+                    <div id="my-avatar" class="w-11 h-11 bg-slate-800 rounded-2xl flex items-center justify-center text-2xl shadow-inner">🦊</div>
+                    <div>
+                        <h4 id="my-name" class="font-bold text-sm">اسمك</h4>
+                        <span class="inline-flex items-center text-[10px] text-emerald-400"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full ml-1 animate-pulse"></span>متصل الآن</span>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2 space-x-reverse">
+                    <button onclick="openSettingsModal()" title="إعدادات الـ Firebase" class="w-9 h-9 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center justify-center text-slate-400 hover:text-white transition"><i class="fa-solid fa-gear text-sm"></i></button>
+                </div>
+            </div>
+
+            <!-- شريط القصص (Stories Bar) العلوي -->
+            <div class="p-3 border-b border-slate-800/80 bg-slate-950/40">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold text-slate-400">القصص والحالات</span>
+                    <button onclick="openAddStoryModal()" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center"><i class="fa-solid fa-plus ml-1"></i>إضافة حالة</button>
+                </div>
+                <div class="flex space-x-3 space-x-reverse overflow-x-auto pb-1" id="stories-container">
+                    <!-- يتم تعبئة القصص ديناميكياً -->
+                    <div class="flex flex-col items-center flex-shrink-0 cursor-pointer" onclick="openAddStoryModal()">
+                        <div class="w-14 h-14 rounded-2xl border-2 border-dashed border-slate-700 hover:border-emerald-500 flex items-center justify-center bg-slate-800/50 text-emerald-400 transition">
+                            <i class="fa-solid fa-plus text-lg"></i>
+                        </div>
+                        <span class="text-[10px] text-slate-400 mt-1">حالتك</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- بحث المستخدمين -->
+            <div class="p-3 border-b border-slate-800">
+                <div class="relative">
+                    <span class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-500"><i class="fa-solid fa-magnifying-glass text-xs"></i></span>
+                    <input type="text" id="search-users" placeholder="البحث عن مستخدمين متصلين..." class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pr-9 pl-3 text-xs focus:outline-none focus:border-emerald-500 transition">
+                </div>
+            </div>
+
+            <!-- قائمة المستخدمين / المحادثات المباشرة -->
+            <div class="flex-1 overflow-y-auto p-2 space-y-1" id="users-list">
+                <!-- يتم تعبئة المستخدمين ديناميكياً -->
+                <div class="text-center py-8 text-slate-500 text-xs">جاري تحميل المستخدمين...</div>
+            </div>
+        </aside>
+
+        <!-- منطقة المحادثة الرئيسية -->
+        <main id="chat-area" class="flex-1 bg-slate-950 flex flex-col relative">
+            
+            <!-- رسالة ترحيبية عند عدم اختيار مستخدم -->
+            <div id="no-chat-selected" class="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                <div class="w-20 h-20 bg-slate-900 border border-slate-800 rounded-3xl flex items-center justify-center text-4xl text-slate-600 mb-4 shadow-xl">
+                    <i class="fa-solid fa-comments"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-300">اختر محادثة لبدء التواصل</h3>
+                <p class="text-slate-500 text-xs max-w-xs mt-1">تواصل فوري مباشر عبر الرسائل النصية، الصوتية، ومشاركة الوسائط بكل أمان.</p>
+            </div>
+
+            <!-- محتوى المحادثة النشطة (مخفي مبدئياً) -->
+            <div id="active-chat-container" class="flex-1 flex flex-col hidden h-full">
+                
+                <!-- رأس المحادثة -->
+                <div class="p-4 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 flex items-center justify-between z-10">
+                    <div class="flex items-center space-x-3 space-x-reverse">
+                        <button onclick="backToSidebar()" class="md:hidden text-slate-400 hover:text-white p-1"><i class="fa-solid fa-arrow-right text-lg"></i></button>
+                        <div id="active-avatar" class="w-10 h-10 bg-slate-800 rounded-2xl flex items-center justify-center text-xl">🦊</div>
+                        <div>
+                            <h4 id="active-name" class="font-bold text-sm">اسم المستخدم</h4>
+                            <span id="active-status" class="text-[10px] text-emerald-400">متصل الآن</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 space-x-reverse">
+                        <button onclick="startCall('audio')" title="مكالمة صوتية" class="w-10 h-10 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl flex items-center justify-center transition"><i class="fa-solid fa-phone text-sm"></i></button>
+                        <button onclick="startCall('video')" title="مكالمة فيديو" class="w-10 h-10 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl flex items-center justify-center transition"><i class="fa-solid fa-video text-sm"></i></button>
+                    </div>
+                </div>
+
+                <!-- صندوق الرسائل -->
+                <div id="messages-feed" class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950 flex flex-col">
+                    <!-- يتم تعبئة الرسائل ديناميكياً -->
+                </div>
+
+                <!-- شريط إدخال الرسائل -->
+                <div class="p-3 bg-slate-900 border-t border-slate-800">
+                    <form id="message-form" class="flex items-center space-x-2 space-x-reverse">
+                        <label title="إرفاق صورة أو وسائط" class="cursor-pointer w-10 h-10 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl flex items-center justify-center transition flex-shrink-0">
+                            <i class="fa-solid fa-paperclip text-sm"></i>
+                            <input type="file" id="media-input" accept="image/*" class="hidden">
+                        </label>
+                        
+                        <button type="button" id="record-btn" title="تسجيل صوتي" onclick="toggleVoiceRecording()" class="w-10 h-10 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl flex items-center justify-center transition flex-shrink-0">
+                            <i class="fa-solid fa-microphone text-sm"></i>
+                        </button>
+
+                        <div class="flex-1 relative">
+                            <input type="text" id="message-input" placeholder="اكتب رسالة..." class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-4 text-xs focus:outline-none focus:border-emerald-500 transition">
+                        </div>
+
+                        <button type="submit" class="w-10 h-10 bg-emerald-500 hover:bg-emerald-600 text-slate-950 rounded-xl flex items-center justify-center transition flex-shrink-0 shadow-md shadow-emerald-500/20">
+                            <i class="fa-solid fa-paper-plane text-sm"></i>
+                        </button>
+                    </form>
+                    <!-- مؤشر التسجيل الصوتي -->
+                    <div id="recording-indicator" class="hidden items-center justify-between mt-2 px-3 py-1.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-rose-400">
+                        <span class="flex items-center"><span class="w-2 h-2 bg-rose-500 rounded-full animate-ping ml-2"></span> جاري تسجيل الصوت...</span>
+                        <button type="button" onclick="stopVoiceRecording()" class="font-bold hover:underline">إرسال الصوت</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- نافذة إضافة قصة جديدة -->
+    <div id="story-modal" class="fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h3 class="text-lg font-bold mb-4">إضافة حالة جديدة (Story)</h3>
+            <textarea id="story-text-input" placeholder="ما الذي يدور في ذهنك اليوم؟" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs focus:outline-none focus:border-emerald-500 transition mb-4 resize-none"></textarea>
+            <div class="flex justify-end space-x-2 space-x-reverse">
+                <button type="button" onclick="closeAddStoryModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs rounded-xl transition">إلغاء</button>
+                <button type="button" onclick="publishStory()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold text-xs rounded-xl transition shadow-md">نشر الحالة</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة عرض القصة -->
+    <div id="view-story-modal" class="fixed inset-0 bg-slate-950/95 z-50 flex items-center justify-center p-4 hidden">
+        <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 relative shadow-2xl text-center">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-3 space-x-reverse">
+                    <div id="view-story-avatar" class="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-xl">🦊</div>
+                    <span id="view-story-name" class="font-bold text-sm">اسم المستخدم</span>
+                </div>
+                <button onclick="closeViewStoryModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="bg-slate-950 p-6 rounded-2xl border border-slate-800/80 min-h-[160px] flex items-center justify-center mb-4">
+                <p id="view-story-content" class="text-slate-200 text-sm leading-relaxed"></p>
+            </div>
+            <span id="view-story-time" class="text-[10px] text-slate-500">قبل قليل</span>
+        </div>
+    </div>
+
+    <!-- نافذة إعدادات Firebase -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">إعدادات مشروع Firebase (للربط المباشر على GitHub Pages)</h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-slate-400 text-xs mb-4 leading-relaxed">
+                لكي يعمل التطبيق حياً ومباشراً بين المستخدمين على روابط مختلفة (مثل GitHub Pages)، قم بوضع إعدادات مشروع Firebase الخاص بك هنا أو استخدم الإعدادات الافتراضية للتجربة السريعة:
+            </p>
+            <textarea id="firebase-config-input" rows="6" class="w-full bg-slate-950 font-mono text-[11px] text-slate-300 border border-slate-800 rounded-xl p-3 focus:outline-none focus:border-emerald-500 transition mb-4"></textarea>
+            <div class="flex justify-end space-x-2 space-x-reverse">
+                <button onclick="saveFirebaseConfig()" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold text-xs rounded-xl transition shadow-md">حفظ وتحديث الاتصال</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- كود تطبيق الـ JavaScript مع Firebase SDK والمحركات الفورية -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDocs, addDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // إعدادات Firebase الافتراضية (يمكن تعديلها عبر زر الإعدادات)
+        const defaultFirebaseConfig = {
+            apiKey: "AIzaSyDummyKeyForNexusChatApp123456",
+            authDomain: "nexus-chat-app.firebaseapp.com",
+            projectId: "nexus-chat-app",
+            storageBucket: "nexus-chat-app.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef123456789"
+        };
+
+        let currentConfig = JSON.parse(localStorage.getItem('nexus_fb_config') || JSON.stringify(defaultFirebaseConfig));
+        let app, auth, db;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'nexus-chat-main-v1';
+
+        try {
+            app = initializeApp(currentConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) {
+            console.error("Firebase init error:", e);
+        }
+
+        let currentUser = null;
+        let selectedUserId = null;
+        let selectedUserName = "";
+        let selectedUserAvatar = "🦊";
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        // إدارة الـ Avatars
+        const avatarOptions = document.querySelectorAll('.avatar-option');
+        avatarOptions.forEach(opt => {
+            opt.addEventListener('click', () => {
+                avatarOptions.forEach(o => o.classList.remove('border-emerald-500', 'bg-slate-700'));
+                opt.classList.add('border-emerald-500', 'bg-slate-700');
+                selectedUserAvatar = opt.dataset.avatar;
+            });
+        });
+
+        // نموذج بدء الدخول
+        document.getElementById('profile-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('username-input').value.trim();
+            if (!name) return;
+
+            try {
+                if (auth) {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        // استخدام التوكن المخصص إن وجد
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                }
+                
+                currentUser = {
+                    uid: auth && auth.currentUser ? auth.currentUser.uid : 'user_' + Math.random().toString(36).substring(2, 9),
+                    name: name,
+                    avatar: selectedUserAvatar,
+                    lastSeen: Date.now()
+                };
+
+                localStorage.setItem('nexus_user', JSON.stringify(currentUser));
+                document.getElementById('auth-screen').classList.add('hidden');
+                initApp();
+            } catch (err) {
+                console.error("Auth error:", err);
+                // الدخول المحلّي الطارئ في حال فشل الـ Firebase
+                currentUser = {
+                    uid: 'user_' + Math.random().toString(36).substring(2, 9),
+                    name: name,
+                    avatar: selectedUserAvatar,
+                    lastSeen: Date.now()
+                };
+                localStorage.setItem('nexus_user', JSON.stringify(currentUser));
+                document.getElementById('auth-screen').classList.add('hidden');
+                initApp();
+            }
+        });
+
+        // التحقق من وجود مستخدم مخزن مسبقاً
+        window.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('nexus_user');
+            if (saved) {
+                currentUser = JSON.parse(saved);
+                document.getElementById('auth-screen').classList.add('hidden');
+                if (auth) {
+                    signInAnonymously(auth).catch(() => {});
+                }
+                initApp();
+            }
+            document.getElementById('firebase-config-input').value = JSON.stringify(currentConfig, null, 2);
+        });
+
+        function initApp() {
+            if (!currentUser) return;
+            document.getElementById('my-name').innerText = currentUser.name;
+            document.getElementById('my-avatar').innerText = currentUser.avatar;
+
+            // تسجيل / تحديث بيانات المستخدم في Firestore
+            registerUserInFirestore();
+            // الاستماع للمستخدمين الآخرين
+            listenToUsers();
+            // الاستماع للقصص
+            listenToStories();
+        }
+
+        async function registerUserInFirestore() {
+            if (!db || !currentUser) return;
+            try {
+                const userRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid);
+                await setDoc(userRef, {
+                    uid: currentUser.uid,
+                    name: currentUser.name,
+                    avatar: currentUser.avatar,
+                    lastSeen: Date.now()
+                }, { merge: true });
+            } catch (e) {
+                console.log("Firestore offline or error saving user:", e);
+            }
+        }
+
+        // الاستماع للمستخدمين الفعليين
+        function listenToUsers() {
+            if (!db) return;
+            try {
+                const usersColl = collection(db, 'artifacts', appId, 'public', 'data', 'users');
+                onSnapshot(usersColl, (snapshot) => {
+                    const listEl = document.getElementById('users-list');
+                    listEl.innerHTML = '';
+                    let usersCount = 0;
+
+                    snapshot.forEach(docSnap => {
+                        const u = docSnap.data();
+                        if (u.uid === currentUser.uid) return;
+                        usersCount++;
+
+                        const div = document.createElement('div');
+                        div.className = `flex items-center space-x-3 space-x-reverse p-3 rounded-2xl cursor-pointer transition ${selectedUserId === u.uid ? 'bg-slate-800' : 'hover:bg-slate-800/50'}`;
+                        div.onclick = () => selectUser(u);
+                        div.innerHTML = `
+                            <div class="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 relative">
+                                ${u.avatar || '👤'}
+                                <span class="absolute bottom-0 left-0 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full"></span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h5 class="font-bold text-sm truncate">${u.name}</h5>
+                                <p class="text-[11px] text-slate-400 truncate">انقر لبدء المحادثة الفورية</p>
+                            </div>
+                        `;
+                        listEl.appendChild(div);
+                    });
+
+                    if (usersCount === 0) {
+                        listEl.innerHTML = `<div class="text-center py-10 text-slate-500 text-xs">لا يوجد مستخدمون آخرون متصلون حالياً.<br>قم بفتح رابط التطبيق في متصفح آخر لتجربة التواصل!</div>`;
+                    }
+                }, (error) => {
+                    console.error("Users sync error:", error);
+                });
+            } catch (e) {
+                console.log("Firestore users listener error:", e);
+            }
+        }
+
+        window.selectUser = function(user) {
+            selectedUserId = user.uid;
+            selectedUserName = user.name;
+            selectedUserAvatar = user.avatar;
+
+            document.getElementById('no-chat-selected').classList.add('hidden');
+            document.getElementById('active-chat-container').classList.remove('hidden');
+            document.getElementById('active-name').innerText = selectedUserName;
+            document.getElementById('active-avatar').innerText = selectedUserAvatar;
+
+            // في الشاشات الصغيرة، إخفاء السهم الجانبي
+            if (window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('hidden');
+            }
+
+            listenToMessages();
+        }
+
+        window.backToSidebar = function() {
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('active-chat-container').classList.add('hidden');
+            document.getElementById('no-chat-selected').classList.remove('hidden');
+            selectedUserId = null;
+        }
+
+        // إرسال رسالة نصية أو وسائط
+        document.getElementById('message-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if (!text || !selectedUserId || !currentUser) return;
+
+            await sendMessage({
+                text: text,
+                type: 'text'
+            });
+            input.value = '';
+        });
+
+        async function sendMessage(msgData) {
+            if (!db) return;
+            try {
+                const messagesColl = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+                await addDoc(messagesColl, {
+                    senderId: currentUser.uid,
+                    receiverId: selectedUserId,
+                    text: msgData.text || '',
+                    type: msgData.type || 'text',
+                    mediaUrl: msgData.mediaUrl || '',
+                    timestamp: Date.now()
+                });
+            } catch (e) {
+                console.error("Error sending message:", e);
+                showModal('خطأ', 'فشل إرسال الرسالة، تأكد من اتصال الإنترنت أو إعدادات قاعدة البيانات.');
+            }
+        }
+
+        // الاستماع للرسائل الفورية
+        let messagesUnsubscribe = null;
+        function listenToMessages() {
+            if (!db || !selectedUserId) return;
+            if (messagesUnsubscribe) messagesUnsubscribe();
+
+            try {
+                const messagesColl = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
+                messagesUnsubscribe = onSnapshot(messagesColl, (snapshot) => {
+                    const feed = document.getElementById('messages-feed');
+                    feed.innerHTML = '';
+                    
+                    let allMessages = [];
+                    snapshot.forEach(docSnap => {
+                        const m = docSnap.data();
+                        // التحقق هل الرسالة تخص المحادثة بين المستخدم الحالي والمستخدم المختار
+                        if ((m.senderId === currentUser.uid && m.receiverId === selectedUserId) ||
+                            (m.senderId === selectedUserId && m.receiverId === currentUser.uid)) {
+                            allMessages.push(m);
+                        }
+                    });
+
+                    // ترتيب الرسائل حسب الوقت
+                    allMessages.sort((a, b) => a.timestamp - b.timestamp);
+
+                    if (allMessages.length === 0) {
+                        feed.innerHTML = `<div class="text-center py-8 text-slate-600 text-xs">لا توجد رسائل سابقة. ابدأ المحادثة الآن!</div>`;
+                        return;
+                    }
+
+                    allMessages.forEach(m => {
+                        const isMe = m.senderId === currentUser.uid;
+                        const div = document.createElement('div');
+                        div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-3`;
+                        
+                        let contentHtml = '';
+                        if (m.type === 'image') {
+                            contentHtml = `<img src="${m.mediaUrl}" class="max-w-xs rounded-2xl mb-1 border border-slate-700/50 shadow-md">`;
+                        } else if (m.type === 'audio') {
+                            contentHtml = `<audio controls class="max-w-xs h-10 my-1"><source src="${m.mediaUrl}" type="audio/webm"></audio>`;
+                        } else {
+                            contentHtml = `<p class="text-sm leading-relaxed">${escapeHtml(m.text)}</p>`;
+                        }
+
+                        div.innerHTML = `
+                            <div class="max-w-md px-4 py-2.5 rounded-2xl shadow-sm ${isMe ? 'bg-emerald-600 text-slate-950 rounded-bl-none font-medium' : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-br-none'}">
+                                ${contentHtml}
+                                <span class="block text-[9px] ${isMe ? 'text-slate-900/70' : 'text-slate-500'} text-left mt-1 font-mono">${new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                            </div>
+                        `;
+                        feed.appendChild(div);
+                    });
+
+                    feed.scrollTop = feed.scrollHeight;
+                }, (error) => {
+                    console.error("Messages listener error:", error);
+                });
+            } catch (e) {
+                console.log("Error setting up messages listener:", e);
+            }
+        }
+
+        // إرفاق الوسائط (صور)
+        document.getElementById('media-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                await sendMessage({
+                    text: '[صورة]',
+                    type: 'image',
+                    mediaUrl: event.target.result
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // تسجيل الرسائل الصوتية
+        let isRecording = false;
+        window.toggleVoiceRecording = async function() {
+            const indicator = document.getElementById('recording-indicator');
+            const recordBtn = document.getElementById('record-btn');
+
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob);
+                        reader.onloadend = async function() {
+                            await sendMessage({
+                                text: '[رسالة صوتية]',
+                                type: 'audio',
+                                mediaUrl: reader.result
+                            });
+                        };
+                        // إيقاف الستريم
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    indicator.classList.remove('hidden');
+                    indicator.classList.add('flex');
+                    recordBtn.classList.add('bg-rose-500', 'text-white');
+                } catch (err) {
+                    console.error("Microphone error:", err);
+                    showModal('تنبيه', 'لا يمكن الوصول إلى الميكروفون، تحقق من الأذونات.');
+                }
+            } else {
+                stopVoiceRecording();
+            }
+        }
+
+        window.stopVoiceRecording = function() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                const indicator = document.getElementById('recording-indicator');
+                const recordBtn = document.getElementById('record-btn');
+                indicator.classList.add('hidden');
+                indicator.classList.remove('flex');
+                recordBtn.classList.remove('bg-rose-500', 'text-white');
+            }
+        }
+
+        // إدارة القصص (Stories)
+        window.openAddStoryModal = function() {
+            document.getElementById('story-modal').classList.remove('hidden');
+        }
+        window.closeAddStoryModal = function() {
+            document.getElementById('story-modal').classList.add('hidden');
+            document.getElementById('story-text-input').value = '';
+        }
+
+        window.publishStory = async function() {
+            const text = document.getElementById('story-text-input').value.trim();
+            if (!text || !currentUser || !db) return;
+
+            try {
+                const storiesColl = collection(db, 'artifacts', appId, 'public', 'data', 'stories');
+                await addDoc(storiesColl, {
+                    userId: currentUser.uid,
+                    userName: currentUser.name,
+                    userAvatar: currentUser.avatar,
+                    content: text,
+                    timestamp: Date.now()
+                });
+                closeAddStoryModal();
+                showModal('نجاح', 'تم نشر حالتك بنجاح!');
+            } catch (e) {
+                console.error("Error publishing story:", e);
+                showModal('خطأ', 'فشل نشر الحالة.');
+            }
+        }
+
+        function listenToStories() {
+            if (!db) return;
+            try {
+                const storiesColl = collection(db, 'artifacts', appId, 'public', 'data', 'stories');
+                onSnapshot(storiesColl, (snapshot) => {
+                    const container = document.getElementById('stories-container');
+                    // الاحتفاظ بزر إضافة القصة الأول
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center flex-shrink-0 cursor-pointer" onclick="openAddStoryModal()">
+                            <div class="w-14 h-14 rounded-2xl border-2 border-dashed border-slate-700 hover:border-emerald-500 flex items-center justify-center bg-slate-800/50 text-emerald-400 transition">
+                                <i class="fa-solid fa-plus text-lg"></i>
+                            </div>
+                            <span class="text-[10px] text-slate-400 mt-1">حالتك</span>
+                        </div>
+                    `;
+
+                    const now = Date.now();
+                    const twentyFourHours = 24 * 60 * 60 * 1000;
+
+                    snapshot.forEach(docSnap => {
+                        const s = docSnap.data();
+                        // فلترة القصص الأقدم من 24 ساعة
+                        if (now - s.timestamp > twentyFourHours) return;
+
+                        const div = document.createElement('div');
+                        div.className = "flex flex-col items-center flex-shrink-0 cursor-pointer group";
+                        div.onclick = () => viewStory(s);
+                        div.innerHTML = `
+                            <div class="w-14 h-14 rounded-2xl p-0.5 bg-gradient-to-tr from-emerald-500 to-teal-400 group-hover:scale-105 transition shadow-md shadow-emerald-500/10">
+                                <div class="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center text-xl">
+                                    ${s.userAvatar || '🦊'}
+                                </div>
+                            </div>
+                            <span class="text-[10px] text-slate-300 mt-1 truncate max-w-[60px]">${s.userName}</span>
+                        `;
+                        container.appendChild(div);
+                    });
+                }, (error) => {
+                    console.error("Stories sync error:", error);
+                });
+            } catch (e) {
+                console.log("Stories listener error:", e);
+            }
+        }
+
+        window.viewStory = function(story) {
+            document.getElementById('view-story-avatar').innerText = story.userAvatar;
+            document.getElementById('view-story-name').innerText = story.userName;
+            document.getElementById('view-story-content').innerText = story.content;
+            document.getElementById('view-story-time').innerText = new Date(story.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('view-story-modal').classList.remove('hidden');
+        }
+
+        window.closeViewStoryModal = function() {
+            document.getElementById('view-story-modal').classList.add('hidden');
+        }
+
+        // واجهة المكالمات (صوت / فيديو)
+        let callTimerInterval = null;
+        let callSeconds = 0;
+        let localStream = null;
+        let isAudioMuted = false;
+        let isVideoMuted = false;
+
+        window.startCall = async function(type) {
+            if (!selectedUserId) return;
+            document.getElementById('call-screen').classList.remove('hidden');
+            document.getElementById('call-username').innerText = selectedUserName;
+            document.getElementById('call-avatar').innerText = selectedUserAvatar;
+            document.getElementById('call-screen-avatar').innerText = selectedUserAvatar;
+            document.getElementById('call-status').innerText = type === 'video' ? 'مكالمة فيديو نشطة...' : 'مكالمة صوتية نشطة...';
+
+            callSeconds = 0;
+            document.getElementById('call-timer').innerText = "00:00";
+            callTimerInterval = setInterval(() => {
+                callSeconds++;
+                const mins = Math.floor(callSeconds / 60).toString().padStart(2, '0');
+                const secs = (callSeconds % 60).toString().padStart(2, '0');
+                document.getElementById('call-timer').innerText = `${mins}:${secs}`;
+            }, 1000);
+
+            if (type === 'video') {
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                    const localVideo = document.getElementById('local-video');
+                    localVideo.srcObject = localStream;
+                    localVideo.classList.remove('hidden');
+                    document.getElementById('video-placeholder').classList.add('hidden');
+                } catch (e) {
+                    console.log("Camera access error:", e);
+                }
+            }
+        }
+
+        window.endCall = function() {
+            clearInterval(callTimerInterval);
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            document.getElementById('local-video').classList.add('hidden');
+            document.getElementById('video-placeholder').classList.remove('hidden');
+            document.getElementById('call-screen').classList.add('hidden');
+        }
+
+        window.toggleAudio = function() {
+            isAudioMuted = !isAudioMuted;
+            const btn = document.getElementById('btn-mute');
+            if (isAudioMuted) {
+                btn.classList.add('bg-rose-600', 'text-white');
+                btn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i>';
+            } else {
+                btn.classList.remove('bg-rose-600', 'text-white');
+                btn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+            }
+            if (localStream) {
+                localStream.getAudioTracks().forEach(track => track.enabled = !isAudioMuted);
+            }
+        }
+
+        window.toggleVideo = function() {
+            isVideoMuted = !isVideoMuted;
+            const btn = document.getElementById('btn-video');
+            if (isVideoMuted) {
+                btn.classList.add('bg-rose-600', 'text-white');
+                btn.innerHTML = '<i class="fa-solid fa-video-slash"></i>';
+            } else {
+                btn.classList.remove('bg-rose-600', 'text-white');
+                btn.innerHTML = '<i class="fa-solid fa-video"></i>';
+            }
+            if (localStream) {
+                localStream.getVideoTracks().forEach(track => track.enabled = !isVideoMuted);
+            }
+        }
+
+        // الإعدادات وإدارة الـ Firebase Config
+        window.openSettingsModal = function() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+        window.closeSettingsModal = function() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        window.saveFirebaseConfig = function() {
+            try {
+                const text = document.getElementById('firebase-config-input').value;
+                const parsed = JSON.parse(text);
+                localStorage.setItem('nexus_fb_config', JSON.stringify(parsed));
+                showModal('نجاح', 'تم حفظ إعدادات Firebase بنجاح! سيتم إعادة تحميل التطبيق.');
+                setTimeout(() => location.reload(), 1500);
+            } catch (e) {
+                showModal('خطأ في التنسيق', 'تأكد من أن كود التكوين عبارة عن JSON صالح.');
+            }
+        }
+
+        // دوال المساعدة العامة
+        window.showModal = function(title, message) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        window.closeModal = function() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
+```
